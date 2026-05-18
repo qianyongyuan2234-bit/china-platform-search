@@ -1,0 +1,11 @@
+{
+  "webhook": {
+    "feishu": "https://open.feishu.cn/open-apis/bot/v2/hook/YOUR_WEBHOOK_HERE",
+    "wecom": ""
+  },
+  "search": {
+    "platforms": ["baidu", "weibo", "toutiao", "zhihu", "sohu", "xhs", "douyin", "kuaishou", "shipinhao"],
+    "per_platform_limit": 10,
+    "timeout": 15
+  }
+}

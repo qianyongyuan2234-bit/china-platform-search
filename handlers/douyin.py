@@ -1,0 +1,8 @@
+"""抖音搜索 - 改用百度搜索抖音内容"""
+from models import SearchResult
+from handlers.baidu import search_baidu
+
+async def search_douyin(client, keyword: str, limit: int = 10) -> list[SearchResult]:
+    """通过百度搜索抖音内容"""
+    results = await search_baidu(client, f"site:v.douyin.com {keyword}", "douyin", limit)
+    return results
