@@ -1,4 +1,5 @@
 """通用工具函数"""
+from __future__ import annotations
 import re
 import urllib.parse
 from urllib.parse import parse_qs, unquote, urlparse

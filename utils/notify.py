@@ -60,7 +60,14 @@ def format_feishu_message(results: list[SearchResult], keyword: str) -> str:
 
         lines.append("")
 
-    return "\n".join(lines)[:3000]
+    text = "\n".join(lines)
+    # 飞书有 30720 字节限制，在换行处截断防止文字乱掉
+    if len(text) > 3000:
+        text = text[:3000]
+        cut = text.rfind("\n")
+        if cut > 0:
+            text = text[:cut] + "\n\n... 内容已截断"
+    return text
 
 
 async def send_feishu(webhook_url: str, results: list[SearchResult], keyword: str):

@@ -1,4 +1,5 @@
 """多平台搜索聚合器 - 核心调度"""
+from __future__ import annotations
 import asyncio
 from models import SearchResult
 from utils.http import HTTPClient
@@ -14,6 +15,7 @@ HANDLERS = {
     "kuaishou": ("handlers.kuaishou", "search_kuaishou"),
     "xhs": ("handlers.xhs", "search_xhs"),
     "shipinhao": ("handlers.shipinhao", "search_shipinhao"),
+    "peoplerail": ("handlers.peoplerail", "search_peoplerail"),
 }
 
 PLATFORM_NAMES = {
@@ -26,10 +28,11 @@ PLATFORM_NAMES = {
     "kuaishou": "快手",
     "xhs": "小红书",
     "shipinhao": "视频号",
+    "peoplerail": "人民铁道网",
 }
 
 
-async def search_platform(client: HTTPClient, platform: str, keyword: str, limit: int) -> list[SearchResult]:
+async def search_platform(client: HTTPClient, platform: str, keyword: str, limit: int, days_back: int = None) -> list[SearchResult]:
     """搜索单个平台"""
     module_path, func_name = HANDLERS[platform]
     module = __import__(module_path, fromlist=[func_name])
@@ -37,7 +40,7 @@ async def search_platform(client: HTTPClient, platform: str, keyword: str, limit
 
     name = PLATFORM_NAMES.get(platform, platform)
     try:
-        results = await func(client, keyword, limit)
+        results = await func(client, keyword, limit, days_back=days_back)
         print(f"  ✅ {name}: {len(results)} 条")
         return results
     except Exception as e:
@@ -45,7 +48,7 @@ async def search_platform(client: HTTPClient, platform: str, keyword: str, limit
         return []
 
 
-async def search_all(keyword: str, platforms: list[str] | None = None, limit: int = 10, config: dict | None = None):
+async def search_all(keyword: str, platforms: list[str] | None = None, limit: int = 10, config: dict | None = None, days_back: int = None) -> list[SearchResult]:
     """
     搜索所有指定平台，返回聚合结果
 
@@ -71,16 +74,20 @@ async def search_all(keyword: str, platforms: list[str] | None = None, limit: in
         tasks = []
         for p in platforms:
             if p in HANDLERS:
-                tasks.append(search_platform(client, p, keyword, per_limit))
+                tasks.append(search_platform(client, p, keyword, per_limit, days_back))
             else:
                 print(f"  ⚠️ 未知平台: {p}")
 
         results_list = await asyncio.gather(*tasks, return_exceptions=True)
 
-        # 聚合结果
-        all_results = []
-        for results in results_list:
-            if isinstance(results, list):
-                all_results.extend(results)
+    # 全局去重（按 URL 去重，保留先出现的）
+    seen_urls: set[str] = set()
+    all_results: list[SearchResult] = []
+    for results in results_list:
+        if isinstance(results, list):
+            for r in results:
+                if r.url not in seen_urls:
+                    seen_urls.add(r.url)
+                    all_results.append(r)
 
-        return all_results
+    return all_results

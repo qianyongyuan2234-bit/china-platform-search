@@ -7,13 +7,11 @@
 import json
 import asyncio
 import argparse
-import sys
 from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 from aggregator import search_all
 from utils.notify import send_notification
-from utils.http import HTTPClient
 
 console = Console()
 
@@ -69,6 +67,7 @@ async def main_async(args):
 
     # 执行搜索
     results = await search_all(
+        days_back=args.days,
         keyword=args.keyword,
         platforms=platforms,
         limit=args.limit,
@@ -81,10 +80,8 @@ async def main_async(args):
     # 发送通知
     if args.notify:
         webhook = config.get("webhook", {})
-        notify_map = {"feishu": webhook.get("feishu"), "wecom": webhook.get("wecom")}
-
         for notify_type in args.notify:
-            url = notify_map.get(notify_type)
+            url = webhook.get(notify_type)
             if not url:
                 console.print(f"[yellow]⚠️ {notify_type} webhook 未配置，请编辑 config.json[/yellow]")
                 continue
@@ -97,7 +94,6 @@ async def main_async(args):
 
     # 导出 JSON
     if args.output:
-        from models import SearchResult
         data = [
             {
                 "title": r.title,
@@ -130,9 +126,11 @@ def main():
     parser.add_argument(
         "--platforms",
         nargs="+",
-        help="指定搜索平台 (baidu weibo toutiao zhihu sohu douyin kuaishou xhs shipinhao)",
+        help="指定搜索平台 (baidu weibo toutiao zhihu sohu douyin kuaishou xhs shipinhao peoplerail)",
     )
-    parser.add_argument("--limit", type=int, default=10, help="每个平台返回结果数 (默认: 10)")
+    parser.add_argument("--limit", type=int, default=5, help="每个平台返回结果数 (默认: 5)")
+    parser.add_argument("--days", type=int, default=None, help="搜索最近 N 天的内容")
+    parser.add_argument("--verbose", "-v", action="store_true", help="输出详细日志")
     parser.add_argument(
         "--notify",
         nargs="+",

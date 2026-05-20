@@ -1,4 +1,5 @@
 """搜狐新闻搜索"""
+from __future__ import annotations
 import re
 from bs4 import BeautifulSoup
 from models import SearchResult
@@ -6,7 +7,7 @@ from models import SearchResult
 SEARCH_URL = "https://www.sogou.com/web"
 
 
-async def search_sohu(client, keyword: str, limit: int = 10) -> list[SearchResult]:
+async def search_sohu(client, keyword: str, limit: int = 10, days_back: int = None) -> list[SearchResult]:
     results = []
     # 通过搜狗搜索搜狐站点
     params = {
@@ -16,7 +17,7 @@ async def search_sohu(client, keyword: str, limit: int = 10) -> list[SearchResul
     resp = await client.get(SEARCH_URL, params=params)
     soup = BeautifulSoup(resp.text, "html.parser")
 
-    for item in soup.select("div.results"):
+    for item in soup.select("div.vrwrap, div.rb, div.results"):
         if len(results) >= limit:
             break
         result = _parse_sogou_sohu_item(item, "搜狐")
@@ -28,7 +29,7 @@ async def search_sohu(client, keyword: str, limit: int = 10) -> list[SearchResul
         params["query"] = f"site:news.sohu.com {keyword}"
         resp2 = await client.get(SEARCH_URL, params=params)
         soup2 = BeautifulSoup(resp2.text, "html.parser")
-        for item in soup2.select("div.results"):
+        for item in soup2.select("div.vrwrap, div.rb, div.results"):
             if len(results) >= limit:
                 break
             result = _parse_sogou_sohu_item(item, "搜狐新闻")

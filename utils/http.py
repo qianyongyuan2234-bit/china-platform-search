@@ -1,4 +1,5 @@
 """通用 HTTP 客户端工具"""
+from __future__ import annotations
 import httpx
 import random
 

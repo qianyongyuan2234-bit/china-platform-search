@@ -2,7 +2,7 @@
 from models import SearchResult
 from handlers.baidu import search_baidu
 
-async def search_shipinhao(client, keyword: str, limit: int = 10) -> list[SearchResult]:
+async def search_shipinhao(client, keyword: str, limit: int = 10, days_back: int = None) -> list[SearchResult]:
     """通过百度搜索视频号内容"""
-    results = await search_baidu(client, f"site:channels.qq.com {keyword}", "shipinhao", limit)
+    results = await search_baidu(client, keyword, limit, days_back=days_back, platform="shipinhao")
     return results

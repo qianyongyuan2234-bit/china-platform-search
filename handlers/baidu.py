@@ -1,10 +1,12 @@
 """百度搜索"""
+from __future__ import annotations
 import re
+from datetime import datetime, timedelta, timezone
 from bs4 import BeautifulSoup
 from models import SearchResult
 from utils.helpers import clean_html, unshorten_baidu_url
 
-BASE = "https://www.baidu.com"
+BASE = "https://m.baidu.com"
 SEARCH_URL = f"{BASE}/s"
 
 # 标题区 / 结构化结果中的链接选择器（按优先级）
@@ -20,18 +22,22 @@ _HREF_SELECTORS = (
 )
 
 SITE_MAP = {
-    "douyin": ("抖音", "site:v.douyin.com"),
+    "weibo": ("微博", "site:weibo.com"),
+    "toutiao": ("今日头条", "site:toutiao.com"),
+    "zhihu": ("知乎", "site:zhihu.com"),
+    "douyin": ("抖音", "site:douyin.com"),
     "kuaishou": ("快手", "site:www.kuaishou.com"),
     "xhs": ("小红书", "site:xiaohongshu.com"),
     "shipinhao": ("视频号", "site:channels.qq.com"),
+    "peoplerail": ("人民铁道网", "site:peoplerail.com"),
 }
 
 
-async def search_baidu(client, keyword: str, platform: str, limit: int = 10) -> list[SearchResult]:
+async def search_baidu(client, keyword: str, limit: int = 10, days_back: int | None = None, platform: str | None = None) -> list[SearchResult]:
     """百度搜索（通用或指定站点）"""
     results = []
 
-    if platform in SITE_MAP:
+    if platform and platform in SITE_MAP:
         name, site_query = SITE_MAP[platform]
         query = f"{site_query} {keyword}"
     else:
@@ -39,16 +45,25 @@ async def search_baidu(client, keyword: str, platform: str, limit: int = 10) -> 
         query = keyword
 
     params = {
-        "wd": query,
+        "word": query,
         "rn": str(limit),
         "ie": "utf-8",
     }
 
-    resp = await client.get(SEARCH_URL, params=params, mobile=False)
+    # 时间过滤：百度 gpc 参数 (最近 N 天)
+    if days_back and days_back > 0:
+        now = datetime.now(timezone.utc)
+        start = now - timedelta(days=days_back)
+        start_ts = int(start.timestamp())
+        end_ts = int(now.timestamp())
+        params["gpc"] = f"stf={start_ts},{end_ts}|stftype=1"
+
+
+    resp = await client.get(SEARCH_URL, params=params, mobile=True)
     soup = BeautifulSoup(resp.text, "html.parser")
 
-    # 百度新布局使用 ol -> div.result
-    for result_div in soup.select("div.result, div.c-container, .data-item"):
+    # 移动端百度结果结构
+    for result_div in soup.select("div.c-result, div.result, .result-item, div.c-container"):
         if len(results) >= limit:
             break
         result = await _parse_baidu_item(client, result_div, keyword, name, platform)
