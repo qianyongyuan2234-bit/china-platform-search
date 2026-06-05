@@ -102,6 +102,50 @@ async def send_wecom(webhook_url: str, results: list[SearchResult], keyword: str
     return run_curl(webhook_url, msg)
 
 
+async def check_webhook(config: dict, webhook_types: list[str] | None = None) -> dict[str, bool]:
+    """检查 webhook 连通性，发送测试消息
+
+    Args:
+        config: 配置字典
+        webhook_types: 要检查的 webhook 类型列表，None 表示检查所有已配置的
+
+    Returns:
+        {类型: 是否成功} 的字典
+    """
+    webhook = config.get("webhook", {})
+    if webhook_types is None:
+        webhook_types = [k for k, v in webhook.items() if v]
+
+    test_msg_feishu = {
+        "msg_type": "text",
+        "content": {
+            "text": "🔧 China-Platform-Search 连接测试 ✅\n如果你看到这条消息，说明 webhook 配置正确。"
+        }
+    }
+    test_msg_wecom = {
+        "msgtype": "text",
+        "text": {
+            "content": "🔧 China-Platform-Search 连接测试 ✅\n如果你看到这条消息，说明 webhook 配置正确。"
+        }
+    }
+
+    results = {}
+    for notify_type in webhook_types:
+        url = webhook.get(notify_type)
+        if not url:
+            print(f"  ⚠️ {notify_type}: webhook 未配置")
+            results[notify_type] = False
+            continue
+
+        payload = test_msg_feishu if notify_type == "feishu" else test_msg_wecom
+        ok = run_curl(url, payload)
+        icon = "✅" if ok else "❌"
+        print(f"  {icon} {notify_type}: {'连接成功' if ok else '连接失败'}")
+        results[notify_type] = ok
+
+    return results
+
+
 async def send_notification(results: list[SearchResult], keyword: str, config: dict):
     webhook = config.get("webhook", {})
     success = False

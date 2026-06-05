@@ -34,7 +34,18 @@ SITE_MAP = {
 
 
 async def search_baidu(client, keyword: str, limit: int = 10, days_back: int | None = None, platform: str | None = None) -> list[SearchResult]:
-    """百度搜索（通用或指定站点）"""
+    """百度搜索（通用或指定站点）
+
+    Args:
+        client: HTTPClient 实例。
+        keyword: 搜索关键词。
+        limit: 返回结果数上限。
+        days_back: 时间过滤（最近 N 天），None 表示不限。
+        platform: 平台标识（在 SITE_MAP 中注册的 key），None 表示直接百度搜索。
+
+    Returns:
+        搜索结果列表，无结果时返回空列表。
+    """
     results = []
 
     if platform and platform in SITE_MAP:
@@ -58,17 +69,38 @@ async def search_baidu(client, keyword: str, limit: int = 10, days_back: int | N
         end_ts = int(now.timestamp())
         params["gpc"] = f"stf={start_ts},{end_ts}|stftype=1"
 
-
     resp = await client.get(SEARCH_URL, params=params, mobile=True)
     soup = BeautifulSoup(resp.text, "html.parser")
 
     # 移动端百度结果结构
-    for result_div in soup.select("div.c-result, div.result, .result-item, div.c-container"):
+    result_blocks = soup.select("div.c-result, div.result, .result-item, div.c-container")
+
+    # 诊断：无结果块 → 页面结构可能已变化
+    if not result_blocks:
+        print(f"  ⚠️ {name}: 选择器未匹配到任何结果块（页面结构可能已变化，需更新 CSS 选择器）")
+        # 尝试输出页面片段辅助排查（仅 verbose 场景输出前 500 字符）
+        body = soup.body
+        if body:
+            preview = body.get_text(strip=True)[:300]
+            print(f"  🔍 页面预览: {preview}...")
+        return results
+
+    for result_div in result_blocks:
         if len(results) >= limit:
             break
-        result = await _parse_baidu_item(client, result_div, keyword, name, platform)
-        if result:
-            results.append(result)
+        try:
+            result = await _parse_baidu_item(client, result_div, keyword, name, platform)
+            if result:
+                results.append(result)
+        except Exception as e:
+            # 单条解析失败不影响其他条
+            print(f"  ⚠️ {name}: 解析单条结果失败: {e}")
+            continue
+
+    # 诊断：有结果块但全部解析失败 → 链接选择器可能失效
+    if not results:
+        print(f"  ℹ️ {name}: 匹配到 {len(result_blocks)} 个结果块但均未提取到有效链接"
+              f"（可能是页面无搜索结果，或内部链接选择器失效）")
 
     return results
 

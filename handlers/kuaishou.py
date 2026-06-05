@@ -4,5 +4,9 @@ from handlers.baidu import search_baidu
 
 async def search_kuaishou(client, keyword: str, limit: int = 10, days_back: int = None) -> list[SearchResult]:
     """通过百度搜索快手内容"""
-    results = await search_baidu(client, keyword, limit, days_back=days_back, platform="kuaishou")
-    return results
+    try:
+        results = await search_baidu(client, keyword, limit, days_back=days_back, platform="kuaishou")
+        return results
+    except Exception as e:
+        print(f"  ❌ 快手: {e}")
+        return []

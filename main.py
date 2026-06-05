@@ -11,7 +11,7 @@ from pathlib import Path
 from rich.console import Console
 from rich.table import Table
 from aggregator import search_all
-from utils.notify import send_notification
+from utils.notify import send_notification, check_webhook
 
 console = Console()
 
@@ -60,6 +60,22 @@ def print_results(results):
 
 async def main_async(args):
     config = load_config()
+
+    # --check-webhook 模式：只发测试消息，不触发搜索
+    if args.check_webhook is not None:
+        webhook_types = args.check_webhook if args.check_webhook else None
+        console.print("\n[bold]🔧 Webhook 连通性检查[/bold]\n")
+        results = await check_webhook(config, webhook_types)
+        if results:
+            all_ok = all(results.values())
+            if all_ok:
+                console.print("\n[green]✅ 所有 webhook 连接正常[/green]\n")
+            else:
+                console.print("\n[yellow]⚠️ 部分 webhook 连接失败，请检查配置[/yellow]\n")
+        else:
+            console.print("\n[yellow]⚠️ 没有已配置的 webhook[/yellow]\n")
+        return
+
     platforms = args.platforms if args.platforms else config.get("search", {}).get("platforms")
 
     console.print(f"\n[bold]🔍 搜索关键词：[/bold] [yellow]{args.keyword}[/yellow]")
@@ -138,6 +154,12 @@ def main():
         help="推送通知到飞书/企业微信",
     )
     parser.add_argument("--output", "-o", help="保存结果到 JSON 文件")
+    parser.add_argument(
+        "--check-webhook",
+        nargs="*",
+        choices=["feishu", "wecom"],
+        help="检查 webhook 连通性（不触发搜索），不指定类型则检查所有已配置的 webhook",
+    )
 
     args = parser.parse_args()
     asyncio.run(main_async(args))

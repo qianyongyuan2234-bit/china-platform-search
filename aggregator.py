@@ -1,6 +1,7 @@
 """多平台搜索聚合器 - 核心调度"""
 from __future__ import annotations
 import asyncio
+import time
 from models import SearchResult
 from utils.http import HTTPClient
 
