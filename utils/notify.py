@@ -2,6 +2,7 @@
 import json
 import subprocess
 from datetime import datetime
+from typing import Optional
 from models import SearchResult
 
 
@@ -102,7 +103,7 @@ async def send_wecom(webhook_url: str, results: list[SearchResult], keyword: str
     return run_curl(webhook_url, msg)
 
 
-async def check_webhook(config: dict, webhook_types: list[str] | None = None) -> dict[str, bool]:
+async def check_webhook(config: dict, webhook_types: Optional[list[str]] = None) -> dict[str, bool]:
     """检查 webhook 连通性，发送测试消息
 
     Args:

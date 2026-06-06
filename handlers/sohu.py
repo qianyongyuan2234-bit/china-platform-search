@@ -1,68 +1,25 @@
-"""搜狐新闻搜索"""
+"""搜狐新闻搜索 — 委托给搜狗 handler（site:sohu.com）"""
 from __future__ import annotations
-import re
-from bs4 import BeautifulSoup
+from handlers.sogou import search_sogou
 from models import SearchResult
 
-SEARCH_URL = "https://www.sogou.com/web"
 
+async def search_sohu(
+    client,
+    keyword: str,
+    limit: int = 10,
+    days_back: int | None = None,
+) -> list[SearchResult]:
+    """通过搜狗搜索查询搜狐内容
 
-async def search_sohu(client, keyword: str, limit: int = 10, days_back: int = None) -> list[SearchResult]:
-    try:
-        results = []
-        # 通过搜狗搜索搜狐站点
-        params = {
-            "query": f"site:sohu.com {keyword}",
-            "ie": "utf8",
-        }
-        resp = await client.get(SEARCH_URL, params=params)
-        soup = BeautifulSoup(resp.text, "html.parser")
-
-        for item in soup.select("div.vrwrap, div.rb, div.results"):
-            if len(results) >= limit:
-                break
-            result = _parse_sogou_sohu_item(item, "搜狐")
-            if result:
-                results.append(result)
-
-        # 如果搜狐结果不够，也搜一下搜狐新闻
-        if len(results) < limit:
-            params["query"] = f"site:news.sohu.com {keyword}"
-            resp2 = await client.get(SEARCH_URL, params=params)
-            soup2 = BeautifulSoup(resp2.text, "html.parser")
-            for item in soup2.select("div.vrwrap, div.rb, div.results"):
-                if len(results) >= limit:
-                    break
-                result = _parse_sogou_sohu_item(item, "搜狐新闻")
-                if result and result.url not in [r.url for r in results]:
-                    results.append(result)
-
-        return results
-    except Exception as e:
-        print(f"  ❌ 搜狐: {e}")
-        return []
-
-
-def _parse_sogou_sohu_item(item, platform_name: str) -> SearchResult | None:
-    title_el = item.select_one("h3 a")
-    if not title_el:
-        return None
-
-    title = title_el.get_text(strip=True)
-    url = title_el.get("href", "")
-    if not url:
-        return None
-
-    content_el = item.select_one("div.txt-info p, p")
-    content = content_el.get_text(strip=True) if content_el else ""
-
-    # 摘要中去除关键词高亮标签
-    content = re.sub(r"<[^>]+>", "", content)
-
-    return SearchResult(
-        title=title[:200],
-        content=content[:500],
-        url=url,
-        platform=platform_name,
-        content_type="文字",
-    )
+    委托给 search_sogou(client, keyword, limit, days_back, platform='sohu')。
+    """
+    results = await search_sogou(client, keyword, limit, days_back, platform="sohu")
+    # 搜狗回的可能只有 site:sohu.com 结果，
+    # 如果不够，再补 site:news.sohu.com 去重
+    if len(results) < limit:
+        more = await search_sogou(client, keyword, limit - len(results), days_back, platform=None)
+        # platform=None 时搜狗直接搜索全站，从中筛选搜狐新闻
+        news_results = [r for r in more if ("sohu.com" in r.url and r.url not in {x.url for x in results})]
+        results.extend(news_results[:limit - len(results)])
+    return results

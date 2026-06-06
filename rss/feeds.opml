@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="2.0">
+  <head>
+    <title>胡子哥 RSS 订阅源完整清单</title>
+    <dateCreated>2026-05-10</dateCreated>
+  </head>
+  <body>
+    <outline text="独立思想者 / Deep Thinkers" title="独立思想者 / Deep Thinkers">
+      <outline type="rss" text="Paul Graham" title="Paul Graham" xmlUrl="http://www.aaronsw.com/2002/feeds/pgessays.rss" htmlUrl="https://paulgraham.com" />
+      <outline type="rss" text="Gwern" title="Gwern" xmlUrl="https://www.gwern.net/feed.rss" htmlUrl="https://www.gwern.net" />
+      <outline type="rss" text="Kevin Kelly" title="Kevin Kelly" xmlUrl="https://kk.org/thetechnium/feed/" htmlUrl="https://kk.org" />
+      <outline type="rss" text="Naval Ravikant" title="Naval Ravikant" xmlUrl="https://naval.org/feed" htmlUrl="https://naval.org" />
+      <outline type="rss" text="Seth Godin" title="Seth Godin" xmlUrl="https://seths.blog/feed/" htmlUrl="https://seths.blog" />
+      <outline type="rss" text="LessWrong" title="LessWrong" xmlUrl="https://www.lesswrong.com/feed.xml" htmlUrl="https://www.lesswrong.com" />
+    </outline>
+    <outline text="AI &amp; 科技 / AI &amp; Tech" title="AI &amp; 科技 / AI &amp; Tech">
+      <outline type="rss" text="Ethan Mollick" title="Ethan Mollick" xmlUrl="https://www.oneusefulthing.org/feed" htmlUrl="https://www.oneusefulthing.org" />
+      <outline type="rss" text="OpenAI Blog" title="OpenAI Blog" xmlUrl="https://openai.com/blog/rss.xml" htmlUrl="https://openai.com" />
+      <outline type="rss" text="The Gradient" title="The Gradient" xmlUrl="https://thegradient.pub/feed/" htmlUrl="https://thegradient.pub" />
+      <outline type="rss" text="Dwarkesh Patel" title="Dwarkesh Patel" xmlUrl="https://www.dwarkeshpatel.com/feed" htmlUrl="https://www.dwarkeshpatel.com" />
+      <outline type="rss" text="MIT News (AI)" title="MIT News (AI)" xmlUrl="https://news.mit.edu/rss/ai" htmlUrl="https://news.mit.edu" />
+      <outline type="rss" text="机器之心" title="机器之心" xmlUrl="https://www.jiqizhixin.com/rss" htmlUrl="https://www.jiqizhixin.com" />
+      <outline type="rss" text="Stratechery" title="Stratechery" xmlUrl="https://stratechery.com/feed/" htmlUrl="https://stratechery.com" />
+    </outline>
+    <outline text="认知科学 &amp; 心理学 / Cognitive Science" title="认知科学 &amp; 心理学 / Cognitive Science">
+      <outline type="rss" text="Farnam Street" title="Farnam Street" xmlUrl="https://fs.blog/feed/" htmlUrl="https://fs.blog" />
+      <outline type="rss" text="Common Cog" title="Common Cog" xmlUrl="https://commoncog.com/blog/feed/" htmlUrl="https://commoncog.com" />
+      <outline type="rss" text="Behavioral Scientist" title="Behavioral Scientist" xmlUrl="https://behavioralscientist.org/feed/" htmlUrl="https://behavioralscientist.org" />
+      <outline type="rss" text="ScienceDaily (认知)" title="ScienceDaily (认知)" xmlUrl="https://www.sciencedaily.com/rss/health_mind_brain_cognitive.xml" htmlUrl="https://www.sciencedaily.com" />
+      <outline type="rss" text="Psychology Today" title="Psychology Today" xmlUrl="https://www.psychologytoday.com/us/blogs/feed" htmlUrl="https://www.psychologytoday.com" />
+      <outline type="rss" text="Brain Pickings" title="Brain Pickings" xmlUrl="https://feeds.feedburner.com/brainpickings" htmlUrl="https://themarginalian.org" />
+      <outline type="rss" text="Nautilus" title="Nautilus" xmlUrl="https://nautil.us/feed/" htmlUrl="https://nautil.us" />
+      <outline type="rss" text="Aeon Essays" title="Aeon Essays" xmlUrl="https://aeon.co/feed.rss" htmlUrl="https://aeon.co" />
+      <outline type="rss" text="Quanta Magazine" title="Quanta Magazine" xmlUrl="https://www.quantamagazine.org/feed/" htmlUrl="https://www.quantamagazine.org" />
+    </outline>
+    <outline text="商业 &amp; 产品 / Business &amp; Product" title="商业 &amp; 产品 / Business &amp; Product">
+      <outline type="rss" text="Lenny Rachitsky" title="Lenny Rachitsky" xmlUrl="https://lennysnewsletter.com/feed" htmlUrl="https://lennysnewsletter.com" />
+      <outline type="rss" text="Packy McCormick" title="Packy McCormick" xmlUrl="https://www.notboring.co/feed" htmlUrl="https://www.notboring.co" />
+      <outline type="rss" text="Andrew Wilkinson" title="Andrew Wilkinson" xmlUrl="https://andrew.blog/feed" htmlUrl="https://andrew.blog" />
+      <outline type="rss" text="Tim Ferriss" title="Tim Ferriss" xmlUrl="https://tim.blog/feed/" htmlUrl="https://tim.blog" />
+    </outline>
+    <outline text="生产力 &amp; 知识管理 / Productivity &amp; PKM" title="生产力 &amp; 知识管理 / Productivity &amp; PKM">
+      <outline type="rss" text="Tiago Forte" title="Tiago Forte" xmlUrl="https://fortelabs.com/feed/" htmlUrl="https://fortelabs.com" />
+      <outline type="rss" text="James Clear" title="James Clear" xmlUrl="https://jamesclear.com/feed" htmlUrl="https://jamesclear.com" />
+      <outline type="rss" text="Readwise Blog" title="Readwise Blog" xmlUrl="https://blog.readwise.io/feed" htmlUrl="https://blog.readwise.io" />
+      <outline type="rss" text="Maggie Appleton" title="Maggie Appleton" xmlUrl="https://maggieappleton.com/rss.xml" htmlUrl="https://maggieappleton.com" />
+    </outline>
+    <outline text="金融 &amp; 投资 / Finance &amp; Investing" title="金融 &amp; 投资 / Finance &amp; Investing">
+      <outline type="rss" text="Marginal Revolution" title="Marginal Revolution" xmlUrl="https://marginalrevolution.com/feed" htmlUrl="https://marginalrevolution.com" />
+      <outline type="rss" text="Priceonomics" title="Priceonomics" xmlUrl="https://priceonomics.com/feed" htmlUrl="https://priceonomics.com" />
+      <outline type="rss" text="Meb Faber" title="Meb Faber" xmlUrl="https://mebfaber.com/feed/" htmlUrl="https://mebfaber.com" />
+      <outline type="rss" text="Collaborative Fund" title="Collaborative Fund" xmlUrl="https://www.collaborativefund.com/blog/feed" htmlUrl="https://www.collaborativefund.com" />
+    </outline>
+    <outline text="播客 / Podcasts" title="播客 / Podcasts">
+      <outline type="rss" text="Acquired FM" title="Acquired FM" xmlUrl="https://feeds.acquired.fm/acquired" htmlUrl="https://acquired.fm" />
+      <outline type="rss" text="Lex Fridman" title="Lex Fridman" xmlUrl="https://lexfridman.com/feed" htmlUrl="https://lexfridman.com" />
+    </outline>
+    <outline text="中文源 / Chinese Sources" title="中文源 / Chinese Sources">
+      <outline type="rss" text="阮一峰的网络日志" title="阮一峰的网络日志" xmlUrl="https://www.ruanyifeng.com/blog/atom.xml" htmlUrl="https://www.ruanyifeng.com" />
+      <outline type="rss" text="少数派" title="少数派" xmlUrl="https://sspai.com/feed" htmlUrl="https://sspai.com" />
+      <outline type="rss" text="晚点 LatePost" title="晚点 LatePost" xmlUrl="https://www.latepost.com/feed" htmlUrl="https://www.latepost.com" />
+      <outline type="rss" text="42章经" title="42章经" xmlUrl="https://www.42zhang.cn/feed" htmlUrl="https://www.42zhang.cn" />
+      <outline type="rss" text="道哥黑板报" title="道哥黑板报" xmlUrl="https://mp.weixin.qq.com/rss?u=DAoGemF1s2I" htmlUrl="https://mp.weixin.qq.com" />
+    </outline>
+    <outline text="长文精选 / Longform" title="长文精选 / Longform">
+      <outline type="rss" text="Longreads" title="Longreads" xmlUrl="https://longreads.com/feed/" htmlUrl="https://longreads.com" />
+    </outline>
+    <outline text="生活方式 / Lifestyle" title="生活方式 / Lifestyle">
+      <outline type="rss" text="Art of Manliness" title="Art of Manliness" xmlUrl="https://feeds.feedburner.com/artofmanliness" htmlUrl="https://artofmanliness.com" />
+    </outline>
+  </body>
+</opml>

@@ -1,24 +1,28 @@
-"""百度搜索"""
+"""百度搜索 — httpx 快速路径 + 搜狗回退
+
+不再依赖 Playwright（已废弃），被封锁时直接走搜狗回退。
+纯标准库实现，无 bs4 依赖。
+"""
 from __future__ import annotations
 import re
 from datetime import datetime, timedelta, timezone
-from bs4 import BeautifulSoup
 from models import SearchResult
+from handlers.sogou import search_sogou
 from utils.helpers import clean_html, unshorten_baidu_url
 
 BASE = "https://m.baidu.com"
 SEARCH_URL = f"{BASE}/s"
 
-# 标题区 / 结构化结果中的链接选择器（按优先级）
-_HREF_SELECTORS = (
-    "h3.t a[href]",
-    "h3 a[href]",
-    ".t a[href]",
-    ".c-title a[href]",
-    ".title a[href]",
-    "a.c-font-medium[href]",
-    "a[data-click][href]",
-    "a[href]",
+# 验证码/封锁检测关键字
+_BLOCKED_PATTERNS = (
+    "网络不给力",
+    "请稍后重试",
+    "安全验证",
+    "验证码",
+    "wappass.baidu.com",
+    "captcha",
+    "滑动验证",
+    "百度安全验证",
 )
 
 SITE_MAP = {
@@ -33,7 +37,119 @@ SITE_MAP = {
 }
 
 
-async def search_baidu(client, keyword: str, limit: int = 10, days_back: int | None = None, platform: str | None = None) -> list[SearchResult]:
+def _is_blocked(body_text: str) -> bool:
+    """检测百度是否返回了验证码/封锁页面"""
+    return any(p in body_text for p in _BLOCKED_PATTERNS)
+
+
+def _parse_baidu_results(html: str, limit: int, pname: str) -> list[SearchResult]:
+    """从百度移动端搜索结果 HTML 中提取结果（正则，无 bs4）
+
+    移动端百度结果结构：
+      <div class="c-result"> 或 <div class="result">
+        <h3 class="t"><a href="...">标题</a></h3>
+        <div class="c-span-last">摘要</div>
+      </div>
+    """
+    results = []
+    seen_urls = set()
+
+    # 定位所有结果块
+    # 百度常用的结果块 class
+    block_patterns = ['class="c-result"', 'class="result"', 'class="result-op"']
+
+    positions = []
+    for pat in block_patterns:
+        if positions:
+            break
+        pos = 0
+        while True:
+            idx = html.find(pat, pos)
+            if idx == -1:
+                break
+            positions.append(idx)
+            pos = idx + 1
+
+    if not positions:
+        # 后备：直接找 h3 链接
+        positions = [m.start() for m in re.finditer(r'<h3[^>]*class="t"', html)]
+    if not positions:
+        # 后备2：任意 h3
+        positions = [m.start() for m in re.finditer(r'<h3[^>]*>', html)]
+
+    for start_pos in positions:
+        if len(results) >= limit:
+            break
+
+        # 取约 2000 字符作为一条结果块
+        block = html[start_pos:start_pos + 2000]
+
+        # 提取标题链接
+        link_match = re.search(
+            r'<a[^>]*href="([^"]*)"[^>]*>(.*?)</a>',
+            block, re.DOTALL
+        )
+        if not link_match:
+            continue
+
+        href = link_match.group(1)
+        title_html = link_match.group(2)
+        title = clean_html(title_html)
+
+        if not title or not href:
+            continue
+
+        # 跳过垃圾链接
+        if href.startswith("#") or href == "javascript:;":
+            continue
+
+        if href in seen_urls:
+            continue
+        seen_urls.add(href)
+
+        # 构建完整 URL
+        if href.startswith("//"):
+            full_url = "https:" + href
+        elif href.startswith("/"):
+            full_url = BASE + href
+        else:
+            full_url = href
+
+        # 提取摘要
+        content = ""
+        for content_pat in (
+            r'<div[^>]*class="c-span-last"[^>]*>(.*?)</div>',
+            r'<div[^>]*class="c-abstract"[^>]*>(.*?)</div>',
+            r'<span[^>]*class="content-right"[^>]*>(.*?)</span>',
+            r'<p[^>]*class="[^"]*content[^"]*"[^>]*>(.*?)</p>',
+        ):
+            cm = re.search(content_pat, block, re.DOTALL)
+            if cm:
+                content = clean_html(cm.group(1))
+                break
+
+        # 判断内容类型
+        content_type = "文字"
+        # 后续让调用方根据 platform 覆盖
+
+        results.append(SearchResult(
+            title=title[:200],
+            content=content[:500],
+            url=full_url,
+            platform=pname,
+            content_type=content_type,
+        ))
+
+    return results
+
+
+async def search_baidu(
+    client,
+    keyword: str,
+    limit: int = 10,
+    days_back: int | None = None,
+    platform: str | None = None,
+) -> list[SearchResult]:
     """百度搜索（通用或指定站点）
 
     Args:
@@ -44,7 +160,7 @@ async def search_baidu(client, keyword: str, limit: int = 10, days_back: int | N
         platform: 平台标识（在 SITE_MAP 中注册的 key），None 表示直接百度搜索。
 
     Returns:
-        搜索结果列表，无结果时返回空列表。
+        搜索结果列表，无结果时返回空列表。若百度被封锁，自动回退到搜狗搜索。
     """
     results = []
 
@@ -61,7 +177,7 @@ async def search_baidu(client, keyword: str, limit: int = 10, days_back: int | N
         "ie": "utf-8",
     }
 
-    # 时间过滤：百度 gpc 参数 (最近 N 天)
+    # 时间过滤
     if days_back and days_back > 0:
         now = datetime.now(timezone.utc)
         start = now - timedelta(days=days_back)
@@ -69,115 +185,27 @@ async def search_baidu(client, keyword: str, limit: int = 10, days_back: int | N
         end_ts = int(now.timestamp())
         params["gpc"] = f"stf={start_ts},{end_ts}|stftype=1"
 
-    resp = await client.get(SEARCH_URL, params=params, mobile=True)
-    soup = BeautifulSoup(resp.text, "html.parser")
+    try:
+        resp = await client.get(SEARCH_URL, params=params, mobile=True)
+        body_text = resp.text
+    except Exception as e:
+        print(f"  ❌ {name}: httpx 请求失败: {e}")
+        print(f"  ⚠️ {name}: 回退到搜狗搜索…")
+        return await search_sogou(client, keyword, limit, days_back, platform)
 
-    # 移动端百度结果结构
-    result_blocks = soup.select("div.c-result, div.result, .result-item, div.c-container")
+    # 检测封锁
+    if _is_blocked(body_text):
+        print(f"  ⚠️ {name}: 百度验证码封锁（可能需换 IP），回退到搜狗搜索…")
+        # 传递原始平台标识，让搜狗 handler 做对应的 site: 查询
+        return await search_sogou(client, keyword, limit, days_back, platform)
 
-    # 诊断：无结果块 → 页面结构可能已变化
-    if not result_blocks:
-        print(f"  ⚠️ {name}: 选择器未匹配到任何结果块（页面结构可能已变化，需更新 CSS 选择器）")
-        # 尝试输出页面片段辅助排查（仅 verbose 场景输出前 500 字符）
-        body = soup.body
-        if body:
-            preview = body.get_text(strip=True)[:300]
-            print(f"  🔍 页面预览: {preview}...")
-        return results
+    # 纯标准库解析
+    results = _parse_baidu_results(body_text, limit, name)
 
-    for result_div in result_blocks:
-        if len(results) >= limit:
-            break
-        try:
-            result = await _parse_baidu_item(client, result_div, keyword, name, platform)
-            if result:
-                results.append(result)
-        except Exception as e:
-            # 单条解析失败不影响其他条
-            print(f"  ⚠️ {name}: 解析单条结果失败: {e}")
-            continue
-
-    # 诊断：有结果块但全部解析失败 → 链接选择器可能失效
     if not results:
-        print(f"  ℹ️ {name}: 匹配到 {len(result_blocks)} 个结果块但均未提取到有效链接"
-              f"（可能是页面无搜索结果，或内部链接选择器失效）")
+        print(f"  ℹ️ {name}: 页面内容解析无结果")
+        # 可打开预览帮助调试
+        preview = body_text[:200].replace("\n", " ")[:200]
+        print(f"  🔍 页面预览: {preview}...")
 
     return results
-
-
-def _extract_href_from_block(item) -> str:
-    """从一条结果块中提取最可信的跳转 href。"""
-    for sel in _HREF_SELECTORS:
-        el = item.select_one(sel)
-        if el and el.get("href"):
-            h = el["href"].strip()
-            if h and not h.startswith("#") and h != "javascript:;":
-                return h
-    # 部分模板把地址放在 mu / data-url
-    for attr in ("mu", "data-url", "data-href"):
-        holder = item.select_one(f"[{attr}]")
-        if holder and holder.get(attr):
-            m = re.search(r"https?://[^\s'\"<>]+", holder[attr])
-            if m:
-                return m.group(0)
-    return ""
-
-
-def _title_element_for_block(item):
-    return item.select_one("h3 a, h3 .t a, h3, .c-title a, .title a, .t a")
-
-
-async def _parse_baidu_item(
-    client, item, keyword: str, platform_name: str, platform: str
-) -> SearchResult | None:
-    title_el = _title_element_for_block(item)
-    if not title_el:
-        return None
-
-    href = ""
-    if title_el.name == "a" and title_el.get("href"):
-        href = title_el["href"].strip()
-    else:
-        inner_a = title_el.find("a", href=True) or title_el.find_parent("a", href=True)
-        if inner_a and inner_a.get("href"):
-            href = inner_a["href"].strip()
-    if not href:
-        href = _extract_href_from_block(item)
-    if not href:
-        return None
-
-    url = await unshorten_baidu_url(client, href, referer=SEARCH_URL)
-    if not url.startswith("http"):
-        if href.startswith("//"):
-            url = "https:" + href
-        elif href.startswith("/"):
-            url = BASE + href
-
-    if not url:
-        return None
-
-    title_html = title_el.get_text(strip=True)
-    title = clean_html(title_html)
-    if not title:
-        return None
-
-    # 摘要
-    content_el = item.select_one(".content, .content_1, .c-span-last, .f14tj, .result-content, p, .content-right")
-    content = clean_html(content_el.get_text(strip=True)) if content_el else ""
-
-    # 判断内容类型
-    content_type = "文字"
-    if platform in ("douyin", "kuaishou", "shipinhao"):
-        content_type = "视频"
-    elif platform == "xhs":
-        content_type = "图文"
-    elif any(ext in url for ext in [".mp4", "video"]):
-        content_type = "视频"
-
-    return SearchResult(
-        title=title[:200],
-        content=content[:500],
-        url=url,
-        platform=platform_name,
-        content_type=content_type,
-    )

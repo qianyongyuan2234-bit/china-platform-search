@@ -13,6 +13,7 @@ from rich.table import Table
 from aggregator import search_all
 from utils.notify import send_notification, check_webhook
 
+
 console = Console()
 
 
@@ -124,6 +125,7 @@ async def main_async(args):
         ]
         Path(args.output).write_text(json.dumps(data, ensure_ascii=False, indent=2))
         console.print(f"[green]💾 结果已保存到 {args.output}[/green]")
+
 
 
 def main():
