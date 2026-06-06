@@ -17,6 +17,7 @@ HANDLERS = {
     "xhs": ("handlers.xhs", "search_xhs"),
     "shipinhao": ("handlers.shipinhao", "search_shipinhao"),
     "peoplerail": ("handlers.peoplerail", "search_peoplerail"),
+    "bing": ("handlers.bing", "search_bing"),
 }
 
 PLATFORM_NAMES = {
@@ -30,6 +31,7 @@ PLATFORM_NAMES = {
     "xhs": "小红书",
     "shipinhao": "视频号",
     "peoplerail": "人民铁道网",
+    "bing": "必应",
 }
 
 
