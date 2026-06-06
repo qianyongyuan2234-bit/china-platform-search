@@ -147,18 +147,34 @@ async def check_webhook(config: dict, webhook_types: Optional[list[str]] = None)
     return results
 
 
-async def send_notification(results: list[SearchResult], keyword: str, config: dict):
+async def send_notification(results: list[SearchResult], keyword: str, config: dict, notify_type: str):
+    """发送通知到指定渠道
+
+    Args:
+        results: 搜索结果列表
+        keyword: 搜索关键词
+        config: 配置字典
+        notify_type: 通知渠道 ("feishu" 或 "wecom")
+
+    Returns:
+        是否发送成功
+    """
     webhook = config.get("webhook", {})
-    success = False
+    url = webhook.get(notify_type)
+    if not url:
+        print(f"  ⚠️ {notify_type}: webhook 未配置")
+        return False
 
-    if webhook.get("feishu"):
-        ok = await send_feishu(webhook["feishu"], results, keyword)
-        print(f"飞书推送: {'✅ 成功' if ok else '❌ 失败'}")
-        success = success or ok
+    name_map = {"feishu": "飞书", "wecom": "企业微信"}
+    name = name_map.get(notify_type, notify_type)
 
-    if webhook.get("wecom"):
-        ok = await send_wecom(webhook["wecom"], results, keyword)
-        print(f"企业微信推送: {'✅ 成功' if ok else '❌ 失败'}")
-        success = success or ok
+    if notify_type == "feishu":
+        ok = await send_feishu(url, results, keyword)
+    elif notify_type == "wecom":
+        ok = await send_wecom(url, results, keyword)
+    else:
+        print(f"  ⚠️ 未知通知渠道: {notify_type}")
+        return False
 
-    return success
+    print(f"{name}推送: {'✅ 成功' if ok else '❌ 失败'}")
+    return ok

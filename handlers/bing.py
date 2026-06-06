@@ -42,6 +42,17 @@ def _strip_html(text: str) -> str:
     return re.sub(r"<[^>]+>", "", text).strip()
 
 
+def _clean_title(title: str) -> str:
+    """清理标题中混入的 URL/域名/面包屑残留"""
+    # 去掉嵌入的完整 URL（如 "baidu.comhttps://baike.baidu.com"）
+    title = re.sub(r'https?://[^\s]+', '', title)
+    # 去掉 domain 前缀 + 面包屑分隔符（如 "baidu.com › "）
+    title = re.sub(r'^[\w.-]+\.(?:com|cn|org|net)\s*[›>]\s*', '', title)
+    # 合并多余空白
+    title = re.sub(r'\s+', ' ', title).strip()
+    return title
+
+
 def _parse_bing_results(html: str, limit: int, pname: str, domain: str | None) -> list[SearchResult]:
     """从 Bing CN 搜索结果 HTML 中提取结果"""
     results = []
@@ -64,17 +75,26 @@ def _parse_bing_results(html: str, limit: int, pname: str, domain: str | None) -
 
         block = html[start_pos:start_pos + 3000]
 
-        # 提取链接和标题
+        # 提取链接和标题 — 优先从 <h2> 内提取，避免面包屑/attribution 链接干扰
+        h2_match = re.search(r'<h2[^>]*>(.*?)</h2>', block, re.DOTALL)
+        search_area = h2_match.group(1) if h2_match else block
+
         link_match = re.search(
             r'<a[^>]*href="(https?://[^"]*)"[^>]*>(.*?)</a>',
-            block, re.DOTALL
+            search_area, re.DOTALL
         )
+        if not link_match:
+            # <h2> 内未找到则回退到整个 block 中搜索
+            link_match = re.search(
+                r'<a[^>]*href="(https?://[^"]*)"[^>]*>(.*?)</a>',
+                block, re.DOTALL
+            )
         if not link_match:
             continue
 
         href = link_match.group(1)
         title_html = link_match.group(2)
-        title = _strip_html(title_html)
+        title = _clean_title(_strip_html(title_html))
 
         if not title or not href:
             continue

@@ -103,7 +103,7 @@ async def main_async(args):
                 console.print(f"[yellow]⚠️ {notify_type} webhook 未配置，请编辑 config.json[/yellow]")
                 continue
 
-            ok = await send_notification(results, args.keyword, config)
+            ok = await send_notification(results, args.keyword, config, notify_type)
             if ok:
                 console.print(f"[green]✅ {notify_type} 推送成功[/green]")
             else:
