@@ -92,6 +92,9 @@ def format_feishu_card(articles, scan_summary):
 
         source_tag = f"【{blog}】"
         lines.append(f"{source_tag} {title}")
+        if url:
+            lines.append(f"    {url}")
+        lines.append("")
 
     if len(articles) > MAX_ARTICLES_PER_PUSH:
         lines.append(f"...及其他 {len(articles) - MAX_ARTICLES_PER_PUSH} 篇新文章")
