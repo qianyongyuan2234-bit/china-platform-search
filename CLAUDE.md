@@ -4,7 +4,7 @@
 
 ## 项目概览
 
-这是一个**中文多平台关键词搜索聚合工具**，输入关键词，并发搜索 10 个中文内容平台，汇总结果并可选推送到飞书/企业微信。
+这是一个**中文多平台关键词搜索聚合工具**，输入关键词，并发搜索 12 个中文内容平台，汇总结果并可选推送到飞书/企业微信。
 
 主要使用场景：铁路系统舆情监控、品牌监测、行业情报收集。
 
@@ -14,22 +14,31 @@
 main.py（CLI 入口，argparse）
   └── aggregator.py（并发调度，asyncio.gather）
         ├── HTTPClient（utils/http.py）—— httpx.AsyncClient，UA 随机池
-        ├── handlers/baidu.py —— 核心搜索引擎
-        │     ├── 直接搜索：抓取 m.baidu.com/s 结果页，BeautifulSoup 解析
+        ├── handlers/baidu.py —— 核心搜索引擎（纯正则，无 bs4）
+        │     ├── 直接搜索：抓取 m.baidu.com/s 结果页，正则解析
         │     └── site: 搜索：其他 handler 通过 platform 参数调用
-        ├── handlers/sohu.py —— 独立引擎（搜狗 sogou.com/web）
-        └── handlers/weibo.py / toutiao.py / zhihu.py / douyin.py / ...
-              └── 均为代理 handler：调用 baidu.search_baidu(client, keyword, limit, days_back, platform="xxx")
+        ├── handlers/sogou.py —— 二级回退引擎（搜狗 sogou.com/web）
+        ├── handlers/bing.py —— 三级回退引擎（必应 cn.bing.com/search）
+        ├── handlers/ddg.py —— 四级回退终点（DuckDuckGo html.duckduckgo.com/html/）
+        ├── handlers/sohu.py —— 搜狐（通过搜狗 site: 搜索）
+        ├── handlers/weibo.py / toutiao.py / zhihu.py / douyin.py / ...
+        │     └── 均为代理 handler：调用 baidu.search_baidu(client, keyword, limit, days_back, platform="xxx")
         └── utils/notify.py —— curl 调飞书/企微 webhook
 ```
 
-### 核心模式：百度 `site:` 代理
+### 核心模式：百度 `site:` 代理 + 多级回退链
 
 绝大多数平台没有公开搜索 API，且反爬严格。统一通过百度 `site:` 搜索间接实现：
 
 1. `baidu.py` 的 `SITE_MAP` 字典维护 `platform → (中文名, site:域名)` 映射
 2. 被调用时拼接查询 `site:域名 关键词`
 3. 各平台 handler（如 `weibo.py`）只有 3-5 行代码，直接代理到 `search_baidu`
+
+**回退链**（当上游被封锁或反爬时逐级降级）：
+```
+百度(m.baidu.com) → 搜狗(sogou.com/web) → 必应(cn.bing.com) → DuckDuckGo(html.duckduckgo.com)
+```
+每一级失败时自动回退到下一级，DDG 是终点（失败时返回空列表，不再继续）。
 
 ### 数据流
 
@@ -48,8 +57,11 @@ main.py（CLI 入口，argparse）
 |------|------|----------|
 | `main.py` | CLI 入口 | argparse，不要写业务逻辑 |
 | `aggregator.py` | 核心调度 | `HANDLERS` 和 `PLATFORM_NAMES` 是新平台注册点 |
-| `handlers/baidu.py` | 百度搜索引擎 | `SITE_MAP`、`_HREF_SELECTORS`、`_parse_baidu_item` |
-| `handlers/sohu.py` | 搜狐独立引擎 | 通过搜狗搜索，不依赖 baidu.py |
+| `handlers/baidu.py` | 百度搜索引擎 | `SITE_MAP`、`_parse_baidu_results`、`_is_blocked` |
+| `handlers/sogou.py` | 搜狗搜索引擎 | 百度被封时的二级回退，通过 sogou.com/web 执行 site: 查询 |
+| `handlers/bing.py` | 必应搜索引擎 | 搜狗被封时的三级回退，cn.bing.com 通用搜索+域名过滤 |
+| `handlers/ddg.py` | DuckDuckGo | 四级终点回退，html.duckduckgo.com/html/，失败返回空 |
+| `handlers/sohu.py` | 搜狐独立引擎 | 搜狗 site:sohu.com，不依赖 baidu.py |
 | `utils/http.py` | HTTP 客户端 | `HTTPClient` 封装 httpx，自动重试 |
 | `utils/notify.py` | 飞书/企微推送 | 用 curl（非 httpx），绕过系统代理 |
 | `utils/helpers.py` | 工具函数 | 百度跳转链接解析、HTML 清洗 |
@@ -82,11 +94,10 @@ main.py（CLI 入口，argparse）
 | 库 | 用途 | 版本 |
 |----|------|------|
 | `httpx` | HTTP 客户端（AsyncClient） | >=0.27.0 |
-| `beautifulsoup4` | HTML 解析 | >=4.12.0 |
 | `rich` | 终端表格展示 | >=13.0.0 |
 | `aiofiles` | 异步文件操作 | >=24.0.0 |
 
-不要引入新的重依赖。优先使用标准库。
+不要引入新的重依赖。优先使用标准库。HTML 解析已全部改为 `re`（正则），不再依赖 beautifulsoup4。
 
 ## 关键约定
 
@@ -132,6 +143,9 @@ async def search_xxx(
 ## 测试命令
 
 ```bash
+# 运行单元测试（纯函数，不联网）
+python3 -m unittest discover tests -v
+
 # 最简测试：只搜百度，每平台 3 条
 python main.py "测试" --platforms baidu --limit 3
 

@@ -1,8 +1,8 @@
 # 中文多平台关键词搜索聚合工具
 
-一键在 **10 个中文平台** 搜索关键词，聚合结果并推送到飞书/企业微信。
+一键在 **12 个中文平台** 搜索关键词，聚合结果并推送到飞书/企业微信。
 
-内置支持：百度、微博、今日头条、知乎、搜狐、抖音、快手、小红书、视频号、人民铁道网。
+内置支持：百度、微博、今日头条、知乎、搜狐、抖音、快手、小红书、视频号、人民铁道网、必应、DuckDuckGo。
 
 ## 使用场景
 
@@ -19,7 +19,7 @@
 pip install -r requirements.txt
 ```
 
-依赖项：`httpx`（HTTP 请求）、`beautifulsoup4`（HTML 解析）、`rich`（终端展示）、`aiofiles`（文件处理）。
+依赖项：`httpx`（HTTP 请求）、`rich`（终端展示）、`aiofiles`（文件处理）。HTML 解析使用标准库 `re`（正则），无需额外依赖。
 
 ### 2. 配置文件
 
@@ -32,7 +32,7 @@ pip install -r requirements.txt
     "wecom": ""
   },
   "search": {
-    "platforms": ["baidu", "weibo", "toutiao", "zhihu", "sohu", "xhs", "douyin", "kuaishou", "shipinhao", "peoplerail"],
+    "platforms": ["baidu", "weibo", "toutiao", "zhihu", "sohu", "xhs", "douyin", "kuaishou", "shipinhao", "peoplerail", "bing", "ddg"],
     "per_platform_limit": 10,
     "timeout": 15
   }
@@ -52,7 +52,7 @@ pip install -r requirements.txt
 ### 3. 运行
 
 ```bash
-# 搜索全部 10 个平台
+# 搜索全部 12 个平台
 python main.py "铁路安全"
 
 # 搜索最近 7 天内容
@@ -91,6 +91,8 @@ python main.py --check-webhook feishu
 | 8 | 小红书 | 百度 site:xiaohongshu.com | `handlers/xhs.py` |
 | 9 | 视频号 | 百度 site:channels.qq.com | `handlers/shipinhao.py` |
 | 10 | 人民铁道网 | 百度 site:peoplerail.com | `handlers/peoplerail.py` |
+| 11 | 必应 | 独立引擎 cn.bing.com（回退链第三级） | `handlers/bing.py` |
+| 12 | DuckDuckGo | 独立引擎 html.duckduckgo.com（回退链终点） | `handlers/ddg.py` |
 
 ## 添加新平台
 
@@ -162,12 +164,17 @@ PLATFORM_NAMES = {
 ```
 main.py (CLI 入口)
   └── aggregator.py (并发调度，asyncio.gather)
-        ├── baidu.py (核心：抓取 m.baidu.com/s 结果页)
-        ├── sohu.py  (核心：抓取 sogou.com/web 结果页)
+        ├── baidu.py (核心：抓取 m.baidu.com/s 结果页，正则解析)
+        ├── sogou.py (二级回退：搜狗 sogou.com/web)
+        ├── bing.py  (三级回退：必应 cn.bing.com/search)
+        ├── ddg.py   (四级终点：DuckDuckGo html.duckduckgo.com/html/)
+        ├── sohu.py  (搜狐：通过搜狗 site:sohu.com)
         └── weibo.py / toutiao.py / zhihu.py / ...  (代理：调用 baidu.search_baidu 传 site: 参数)
 ```
 
 **百度 `site:` 搜索策略**：对于没有公开搜索 API 的平台（抖音、快手、小红书等），通过 `site:域名 关键词` 的方式委托百度搜索。百度已经爬取了这些网站的内容，我们只需解析百度的结果页。代价是时效性依赖百度收录速度。
+
+**多级回退链**：当百度被封锁或触发反爬时，自动逐级回退：`百度 → 搜狗 → 必应 → DuckDuckGo`。每一级失败时自动尝试下一级，DDG 是回退终点（失败时返回空列表）。
 
 ## 常见问题
 
@@ -194,10 +201,19 @@ A: 配置 cron job 或类似调度工具：
 ├── requirements.txt         # 依赖声明
 ├── requirements.lock        # 精确依赖版本
 ├── CLAUDE.md                # 项目架构文档
+├── tests/                   # 单元测试（纯函数，不联网）
+│   ├── __init__.py
+│   ├── test_helpers.py      # helpers 工具函数
+│   ├── test_normalize_title.py  # 标题归一化
+│   ├── test_baidu_parse.py  # 百度 HTML 解析
+│   └── test_bing.py         # 必应解析 + 标题清洗
 ├── handlers/
 │   ├── baidu.py             # 百度搜索核心
-│   ├── weibo.py / toutiao.py / zhihu.py / ...  # 各平台 handler
-│   └── sohu.py              # 搜狐（通过搜狗搜索）
+│   ├── sogou.py             # 搜狗回退引擎
+│   ├── bing.py              # 必应回退引擎
+│   ├── ddg.py               # DuckDuckGo 回退终点
+│   ├── sohu.py              # 搜狐（通过搜狗搜索）
+│   └── weibo.py / toutiao.py / zhihu.py / ...  # 各平台 handler
 └── utils/
     ├── http.py              # HTTP 客户端
     ├── notify.py            # 飞书/企微推送
