@@ -148,7 +148,6 @@ def main():
     )
     parser.add_argument("--limit", type=int, default=5, help="每个平台返回结果数 (默认: 5)")
     parser.add_argument("--days", type=int, default=None, help="搜索最近 N 天的内容")
-    parser.add_argument("--verbose", "-v", action="store_true", help="输出详细日志")
     parser.add_argument(
         "--notify",
         nargs="+",
