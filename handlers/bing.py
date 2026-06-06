@@ -4,12 +4,15 @@ Bing CN 的 site: 操作符对中国社交平台索引较浅，
 因此采用通用搜索 + URL 域名过滤的方式模拟 site: 查询。
 
 纯标准库实现，无 bs4 依赖。
+
+回退链：百度 → 搜狗 → 必应 → DuckDuckGo（终点）
 """
 from __future__ import annotations
 import re
 import random
 import asyncio
 from models import SearchResult
+from handlers.ddg import search_ddg
 
 SEARCH_URL = "https://cn.bing.com/search"
 
@@ -169,13 +172,14 @@ async def search_bing(
         resp = await client.get(SEARCH_URL, params=params, headers={"Accept-Language": "zh-CN,zh;q=0.9"})
     except Exception as e:
         print(f"  ❌ 必应: {e}")
-        return []
+        print("  ⚠️ 回退到 DuckDuckGo…")
+        return await search_ddg(client, keyword, limit, days_back, platform)
 
     html = resp.text
 
     if resp.status_code != 200 or len(html) < 500:
-        print("  ⚠️ 必应响应异常")
-        return []
+        print("  ⚠️ 必应响应异常，回退到 DuckDuckGo…")
+        return await search_ddg(client, keyword, limit, days_back, platform)
 
     results = _parse_bing_results(html, limit, pname, domain)
 
@@ -195,5 +199,7 @@ async def search_bing(
     if not results:
         preview = html[:200].replace("\n", " ")[:200]
         print(f"  ℹ️ 必应({pname}): 未解析到结果 页面预览: {preview}...")
+        print("  ⚠️ 回退到 DuckDuckGo…")
+        return await search_ddg(client, keyword, limit, days_back, platform)
 
     return results
